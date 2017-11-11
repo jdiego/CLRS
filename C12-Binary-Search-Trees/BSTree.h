@@ -1,59 +1,74 @@
 /*************************************************************************
-	> File Name: BTREE.h
-	> Author: Louis1992
-	> Mail: zhenchaogan@gmail.com
-	> Blog: http://gzc.github.io
-	> Created Time: Sun May  3 00:05:14 2015
+ * File Name: btree.hpp
  ************************************************************************/
 
-#ifndef BTREE_H_
-#define BTREE_H_
+#ifndef BTREE_INCLUDED
+#define BTREE_INCLUDED
 
 #include <iostream>
 #include <iomanip>
-using namespace std;
 
-template <class type>
+template <typename T>
 class BSTree
 {
-private:
-    class BSTNode
-    {
+    struct BinaryNode;
     public:
-        BSTNode* left;
-        BSTNode* right;
-        type data; BSTNode():left(NULL),right(NULL) {}
-        BSTNode(type a_data):data(a_data),left(NULL),right(NULL) {}
-    };
-    typedef BSTNode* bp;
-    bp m_root;
-    
-public:
-    BSTree():m_root(NULL) {}
-    ~BSTree() {deleteNode(m_root);}
-    bool isEmpty() const {return m_root == NULL;}
-    bool find(const type& a_data) const;
-    void insert(const type& a_data) {insertAux(m_root,a_data);}
-    void remove(const type& a_data);
-    void inorder(ostream& out) const {inorderAux(out, m_root);}
-    void graph(ostream& out) const {graphAux(out, 0, m_root);}
-    
-protected:
-    void deleteNode(bp a_node);
-    void insertAux(bp& a_subRoot, const type& a_data);
-    void inorderAux(ostream& out, bp a_subRoot) const;
-    void graphAux(ostream& out, int a_indent, bp a_subRoot) const;
-    void find2(const type& a_data, bool& found, bp& a_locPtr, bp& a_parent) const;
+        BSTree(void): m_root{nullptr}
+        {}
+        ~BSTree()
+        {
+            delete_node(m_root);
+        }
+        bool empty(void) const
+        {
+            return m_root == nullptr;
+        }
+        bool find(const T& data) const;
+        void insert(const T& data)
+        {
+            insert(m_root, data);
+        }
+        void remove(const T& data);
+
+        void inorder(std::ostream& out) const
+        {
+            inorder(out, m_root);
+        }
+        void graph(std::ostream& out) const
+        {
+            graph(out, 0, m_root);
+        }
+
+    protected:
+        BinaryNode* find_parent(BinaryNode* root, BinaryNode* node) const;
+        void delete_node(BinaryNode* a_node);
+        BinaryNode* insert(BinaryNode*& a_subRoot, const T& data);
+        void inorder(std::ostream& out, BinaryNode* a_subRoot) const;
+        void graph(std::ostream& out, int a_indent, BinaryNode* a_subRoot) const;
+        void find2(const T& data, bool& found, BinaryNode*& a_locPtr, BinaryNode*& a_parent) const;
+    private:
+        struct BinaryNode
+        {
+            BinaryNode* left;
+            BinaryNode* right;
+            BinaryNode* succ;
+            T data;
+            BinaryNode():left(NULL), right(NULL), succ(NULL)
+            {}
+            BinaryNode(T data): data(data), left(NULL), right(NULL), succ(NULL)
+            {}
+        };
+        BinaryNode* m_root;
 };
 #endif
 
-template <class type>
-inline void BSTree<type>::deleteNode(bp a_node)
+template <typename T>
+inline void BSTree<T>::delete_node(BinaryNode* a_node)
 {
     if (a_node->left != NULL)
-        deleteNode(a_node->left);
+        delete_node(a_node->left);
     else if (a_node->right != NULL)
-        deleteNode(a_node->right);
+        delete_node(a_node->right);
     else if (a_node != NULL)
     {
         delete a_node;
@@ -61,53 +76,76 @@ inline void BSTree<type>::deleteNode(bp a_node)
     }
 }
 
-template <class type>
-inline void BSTree<type>::insertAux(bp& a_subRoot, const type& a_data)
+template <typename T>
+inline typename BSTree<T>::BinaryNode* BSTree<T>::insert(BinaryNode*& a_subRoot, const T& data)
 {
     if (a_subRoot == NULL)
-        a_subRoot = new BSTree<type>::BSTNode(a_data);
-    else if (a_data < a_subRoot->data)
-        insertAux(a_subRoot->left,a_data);
-    else if (a_subRoot->data < a_data)
-        insertAux(a_subRoot->right,a_data);
+    {
+        a_subRoot = new BSTree<T>::BinaryNode(data);
+        return a_subRoot;
+    }
+    else if (data < a_subRoot->data)
+    {
+        BinaryNode* inserted = insert(a_subRoot->left, data);
+        if (a_subRoot->left == inserted)
+            inserted->succ = a_subRoot;
+
+        return inserted;
+    }
+    else if (a_subRoot->data < data)
+    {
+        BinaryNode* inserted = insert(a_subRoot->right, data);
+        if (a_subRoot->right == inserted)
+        {
+            BinaryNode* tmp = a_subRoot->succ;
+            a_subRoot->succ = inserted;
+        }
+        return inserted;
+    }
     else
-        std::cerr << "a_data already in the tree!\n";
+    {
+        std::cerr << "data already in the tree!\n";
+        return nullptr;
+    }
 }
 
-template <class type>
-inline void BSTree<type>::inorderAux(ostream& out, BSTree<type>::bp a_subRoot) const
+template <typename T>
+inline void BSTree<T>::inorder(std::ostream& out, BinaryNode* a_subRoot) const
 {
     if (a_subRoot != NULL)
     {
-        inorderAux(out, a_subRoot->left);//L
+        inorder(out, a_subRoot->left);//L
         out << a_subRoot->data << " ";//V
-        inorderAux(out, a_subRoot->right);//R
+        inorder(out, a_subRoot->right);//R
     }
 }
 
-template <class type>
-inline void BSTree<type>::graphAux(ostream& out, int a_indent, bp a_subRoot) const
+template <typename T>
+inline void BSTree<T>::graph(std::ostream& out, int a_indent, BinaryNode* a_subRoot) const
 {
     if (a_subRoot != NULL)
     {
-        graphAux(out, a_indent+8, a_subRoot->right);                //R
-        out << setw(a_indent) << " " << a_subRoot->data << endl;    //V
-        graphAux(out, a_indent+8, a_subRoot->left);                    //L
+        graph(out, a_indent+8, a_subRoot->right);                //R
+        out << std::setw(a_indent) << " " << a_subRoot->data;    //V
+        if(a_subRoot->succ)
+            out <<"(" << a_subRoot->succ->data << ")";
+        out << std::endl;
+        graph(out, a_indent+8, a_subRoot->left);                    //L
     }
 }
 
-template <class type>
-inline bool BSTree<type>::find(const type& a_data) const
+template <typename T>
+inline bool BSTree<T>::find(const T& data) const
 {
-    bp locPtr = m_root;
+    BinaryNode* locPtr = m_root;
     bool found = false;
     while (!found && locPtr != NULL)
     {
-        if (a_data < locPtr->data)
+        if (data < locPtr->data)
         {
             locPtr = locPtr->left;
         }
-        else if (locPtr->data < a_data)
+        else if (locPtr->data < data)
         {
             locPtr = locPtr->right;
         }
@@ -119,22 +157,20 @@ inline bool BSTree<type>::find(const type& a_data) const
     return found;
 }
 
-template <class type>
-inline void BSTree<type>::find2(const type& a_data, bool& found,
-                                        bp& a_locPtr,
-                                        bp& a_parent) const
+template <typename T>
+inline void BSTree<T>::find2(const T& data, bool& found, BinaryNode*& a_locPtr, BinaryNode*& a_parent) const
 {
     a_locPtr = m_root;
     a_parent = NULL;
     found = false;
     while (!found && a_locPtr != NULL)
     {
-        if (a_data < a_locPtr->data)
+        if (data < a_locPtr->data)
         {
             a_parent = a_locPtr;
             a_locPtr = a_locPtr->left;
         }
-        else if (a_locPtr->data < a_data)
+        else if (a_locPtr->data < data)
         {
             a_parent = a_locPtr;
             a_locPtr = a_locPtr->right;
@@ -145,24 +181,38 @@ inline void BSTree<type>::find2(const type& a_data, bool& found,
         }
     }
 }
+template <typename T>
+inline typename BSTree<T>::BinaryNode* BSTree<T>::find_parent(BinaryNode* root, BinaryNode* node) const
+{
+    if(root)
+    {
+        if ( root->left == node || root->right == node)
+            return root;
+        if(node->data < root->data)
+            return find_parent(root->left, node );
+        else
+            return find_parent(root->right, node );
+    }
+    else
+        return nullptr;
+}
 
-template <class type>
-inline void BSTree<type>::remove(const type& a_data)
+template <typename T>
+inline void BSTree<T>::remove(const T& data)
 {
     bool found = false;
-    bp x; //被删除的节点
-    bp parent;
-    find2(a_data,found,x,parent);
+    BinaryNode* x;
+    BinaryNode* parent;
+    find2(data,found,x,parent);
     if (!found)
     {
-        std::cerr << "a_data is not in the tree!\n";
+        std::cerr << "data is not in the tree!\n";
         return;
     }
-    
-    if (x->left != NULL && x->right != NULL)//节点有两个子女
+
+    if (x->left != NULL && x->right != NULL)
     {
-        //查找x的中续后继节点及其双亲节点
-        bp xSucc = x->right;
+        BinaryNode* xSucc = x->right;
         parent = x;
         while (xSucc->left != NULL)
         {
@@ -172,7 +222,7 @@ inline void BSTree<type>::remove(const type& a_data)
         x->data = xSucc->data;
         x = xSucc;
     }
-    bp subTree = x->left;
+    BinaryNode* subTree = x->left;
     if (subTree == NULL)
     {
         subTree = x->right;
